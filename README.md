@@ -1,5 +1,6 @@
- 🩺 **Diabetes Machine Learning Model
- **
+ 🩺Diabetes Machine Learning Model
+
+ 
 📝 Introduction
 Diabetes is a chronic health condition that affects how the body processes blood sugar. This repository contains a Binary Classification Model designed to predict the likelihood of diabetes in patients based on specific diagnostic measurements.
 By utilizing clinical data, this project aims to demonstrate how machine learning can support healthcare professionals in early diagnosis and risk assessment.
