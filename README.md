@@ -41,13 +41,7 @@ This notebook demonstrates a complete data science lifecycle, including:
 
 The project combines healthcare analytics with predictive modeling techniques to generate meaningful insights from structured medical datasets.
 
-It is highly suitable for:
 
-🎓 Academic Projects
-💼 Professional Portfolios
-📚 Machine Learning Practice
-🏥 Healthcare Analytics Demonstrations
-🚀 Internship & Job Applications
 
 This project focuses on **Diabetes Prediction using Machine Learning** combined with comprehensive **Exploratory Data Analysis (EDA)** and feature engineering techniques.
 
@@ -92,20 +86,7 @@ The main goal of this project is to build an intelligent diabetes prediction sys
 ✔ Visualize predictive performance using ROC and PR curves
 ✔ Build a scalable workflow suitable for real-world healthcare analytics
 
----
 
-# 🧠 Machine Learning Workflow
-
-```mermaid
-flowchart LR
-    A[Dataset Collection] --> B[Data Cleaning]
-    B --> C[Exploratory Data Analysis]
-    C --> D[Feature Engineering]
-    D --> E[Train-Test Split]
-    E --> F[Model Training]
-    F --> G[Cross Validation]
-    G --> H[Performance Evaluation]
-    H --> I[ROC & Precision Recall Curves]
 ```
 
 ---
