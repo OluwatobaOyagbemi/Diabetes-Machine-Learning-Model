@@ -52,9 +52,6 @@ Rather than duplicating existing minority records, SMOTE generates synthetic dia
 Three models were trained and evaluated:
 
 | Model | Accuracy | F1-Score | ROC-AUC |
-|---|---|---|---|
-| Logistic Regression | — | — | — |
-| Gradient Boosting | — | — | — |
 | **Random Forest** ✅ | **0.975** | **0.975** | **0.997** |
 
 **Evaluation metrics used:**
