@@ -5,4 +5,4 @@ __pycache__/
 .streamlit/secrets.toml
 Diabetes model/streamlit.log
 Diabetes model/streamlit.err.log
-model.pkl
+
