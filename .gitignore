@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+.streamlit/secrets.toml
+Diabetes model/streamlit.log
+Diabetes model/streamlit.err.log
