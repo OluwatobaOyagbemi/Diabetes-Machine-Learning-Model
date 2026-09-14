@@ -3,4 +3,3 @@ pandas>=2.0,<3
 numpy>=1.24,<3
 scikit-learn==1.6.1
 plotly>=5.18,<7
-shap>=0.44,<0.51

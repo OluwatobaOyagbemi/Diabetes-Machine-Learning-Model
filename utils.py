@@ -3,7 +3,6 @@ import pickle
 
 import numpy as np
 import pandas as pd
-import shap
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import (
@@ -272,23 +271,6 @@ def feature_importance(model: Pipeline) -> pd.DataFrame:
     )
 
 
-def local_importance(model: Pipeline, patient: pd.DataFrame, reference: pd.DataFrame) -> pd.DataFrame:
-    transformed_patient = model.named_steps["preprocessor"].transform(patient)
-    patient_values = transformed_patient.toarray().ravel() if hasattr(transformed_patient, "toarray") else transformed_patient.ravel()
-    transformed_reference = model.named_steps["preprocessor"].transform(reference)
-    reference_mean = np.asarray(transformed_reference.mean(axis=0)).ravel()
-    classifier = model.named_steps["model"]
-    names = model.named_steps["preprocessor"].get_feature_names_out()
-    contributions = pd.DataFrame(
-        {
-            "feature": names,
-            "importance": classifier.feature_importances_,
-            "contribution": classifier.feature_importances_ * (patient_values - reference_mean),
-        }
-    )
-    return contributions.reindex(contributions["contribution"].abs().sort_values(ascending=False).index).head(10)
-
-
 def _raw_feature_name(transformed_name: str) -> str:
     """Map a ColumnTransformer output name (e.g. 'categorical__gender_Female') back to its raw feature."""
     suffix = transformed_name.split("__", 1)[-1]
@@ -298,46 +280,42 @@ def _raw_feature_name(transformed_name: str) -> str:
     return suffix
 
 
-def get_shap_background(data: pd.DataFrame, sample_size: int = 500) -> pd.DataFrame:
-    """A small, fixed sample used as the SHAP background/reference set (keeps SHAP fast)."""
+def get_background_sample(data: pd.DataFrame, sample_size: int = 500) -> pd.DataFrame:
+    """A small, fixed reference sample used to contextualize a patient's feature values."""
     return data[FEATURE_COLUMNS].sample(n=min(sample_size, len(data)), random_state=42)
 
 
-def shap_global_importance(model: Pipeline, background: pd.DataFrame, top_n: int = 7) -> pd.DataFrame:
-    """Mean absolute SHAP value per raw feature, aggregated across one-hot columns."""
-    transformed = model.named_steps["preprocessor"].transform(background)
-    if hasattr(transformed, "toarray"):
-        transformed = transformed.toarray()
+def global_feature_importance(model: Pipeline, background: pd.DataFrame, top_n: int = 7) -> pd.DataFrame:
+    """Model feature-importance, aggregated from one-hot columns back to each raw feature."""
+    classifier = model.named_steps["model"]
     names = model.named_steps["preprocessor"].get_feature_names_out()
-    explainer = shap.TreeExplainer(model.named_steps["model"])
-    shap_values = np.asarray(explainer.shap_values(transformed))
-    if shap_values.ndim == 3:  # some SHAP/estimator combos return (classes, n, features)
-        shap_values = shap_values[-1]
-    frame = pd.DataFrame(shap_values, columns=names)
-    frame = frame.abs().mean(axis=0).rename("mean_abs_shap").reset_index().rename(columns={"index": "transformed_feature"})
+    frame = pd.DataFrame({"transformed_feature": names, "importance": classifier.feature_importances_})
     frame["feature"] = frame["transformed_feature"].map(_raw_feature_name)
     return (
-        frame.groupby("feature", as_index=False)["mean_abs_shap"].sum()
-        .sort_values("mean_abs_shap", ascending=False)
+        frame.groupby("feature", as_index=False)["importance"].sum()
+        .sort_values("importance", ascending=False)
         .head(top_n)
         .reset_index(drop=True)
     )
 
 
-def shap_local_contribution(model: Pipeline, patient: pd.DataFrame, background: pd.DataFrame) -> pd.DataFrame:
-    """Per-raw-feature SHAP contribution for a single patient row."""
+def local_feature_contribution(model: Pipeline, patient: pd.DataFrame, background: pd.DataFrame) -> pd.DataFrame:
+    """Per-raw-feature contribution proxy for a single patient: importance weighted by how far the
+    patient's value sits from a background sample's average, aggregated back to raw feature names."""
     transformed_patient = model.named_steps["preprocessor"].transform(patient)
     if hasattr(transformed_patient, "toarray"):
         transformed_patient = transformed_patient.toarray()
+    transformed_background = model.named_steps["preprocessor"].transform(background)
+    if hasattr(transformed_background, "toarray"):
+        transformed_background = transformed_background.toarray()
+    background_mean = np.asarray(transformed_background).mean(axis=0).ravel()
+    classifier = model.named_steps["model"]
     names = model.named_steps["preprocessor"].get_feature_names_out()
-    explainer = shap.TreeExplainer(model.named_steps["model"])
-    shap_values = np.asarray(explainer.shap_values(transformed_patient))
-    if shap_values.ndim == 3:
-        shap_values = shap_values[-1]
-    frame = pd.DataFrame({"transformed_feature": names, "shap_value": shap_values.ravel()})
+    contribution = classifier.feature_importances_ * (np.asarray(transformed_patient).ravel() - background_mean)
+    frame = pd.DataFrame({"transformed_feature": names, "contribution": contribution})
     frame["feature"] = frame["transformed_feature"].map(_raw_feature_name)
-    grouped = frame.groupby("feature", as_index=False)["shap_value"].sum()
-    return grouped.reindex(grouped["shap_value"].abs().sort_values(ascending=False).index).head(10)
+    grouped = frame.groupby("feature", as_index=False)["contribution"].sum()
+    return grouped.reindex(grouped["contribution"].abs().sort_values(ascending=False).index).head(10)
 
 
 def cross_validated_metrics(data: pd.DataFrame, n_splits: int = 5) -> dict:

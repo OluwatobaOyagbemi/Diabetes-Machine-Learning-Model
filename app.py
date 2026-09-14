@@ -24,11 +24,11 @@ from utils import (
     classify_value,
     cross_validated_metrics,
     display_name,
-    get_shap_background,
+    get_background_sample,
+    global_feature_importance,
     load_or_train_model,
+    local_feature_contribution,
     make_test_predictions,
-    shap_global_importance,
-    shap_local_contribution,
     threshold_metrics,
 )
 
@@ -197,13 +197,13 @@ def get_cv_metrics(data: pd.DataFrame):
 
 
 @st.cache_data
-def get_shap_background_cached(data: pd.DataFrame):
-    return get_shap_background(data)
+def get_background_sample_cached(data: pd.DataFrame):
+    return get_background_sample(data)
 
 
 @st.cache_data
-def get_global_shap(_model, background: pd.DataFrame):
-    return shap_global_importance(_model, background)
+def get_global_importance(_model, background: pd.DataFrame):
+    return global_feature_importance(_model, background)
 
 
 def risk_tier(score: float) -> tuple[str, str]:
@@ -365,18 +365,18 @@ def render_screener(data: pd.DataFrame, model) -> None:
             st.caption(f"The {CLINICAL_THRESHOLD:.0%} threshold is set low on purpose, to catch about 90% of true diabetes cases (sensitivity) even though it means more people get sent for an unnecessary confirmatory test.")
             st.warning("This estimate is not a diagnostic substitute. It supports the decision to refer for confirmatory testing - it does not replace clinical judgment.")
         with right:
-            background = get_shap_background_cached(data)
-            local = shap_local_contribution(model, patient, background)
-            view = st.radio("Explanation view", ["Plain-language", "Technical (SHAP values)"], horizontal=True, key="screener_view")
-            if view == "Technical (SHAP values)":
-                ordered = local.sort_values("shap_value")
+            background = get_background_sample_cached(data)
+            local = local_feature_contribution(model, patient, background)
+            view = st.radio("Explanation view", ["Plain-language", "Technical (feature importance)"], horizontal=True, key="screener_view")
+            if view == "Technical (feature importance)":
+                ordered = local.sort_values("contribution")
                 figure = go.Figure(go.Bar(
-                    x=ordered["shap_value"], y=[display_name(feature) for feature in ordered["feature"]], orientation="h",
-                    marker_color=[ALERT_RED if value > 0 else SAFE_GREEN for value in ordered["shap_value"]],
+                    x=ordered["contribution"], y=[display_name(feature) for feature in ordered["feature"]], orientation="h",
+                    marker_color=[ALERT_RED if value > 0 else SAFE_GREEN for value in ordered["contribution"]],
                 ))
                 figure.update_layout(
-                    title="SHAP contribution to this patient's risk score",
-                    xaxis_title="SHAP value (impact on model output)",
+                    title="Feature contribution to this patient's risk score",
+                    xaxis_title="Contribution (impact on model output)",
                     yaxis_title=None,
                     margin=dict(l=10, r=10, t=45, b=10),
                 )
@@ -385,7 +385,7 @@ def render_screener(data: pd.DataFrame, model) -> None:
             else:
                 st.caption("Top factors behind this patient's estimate, ranked by impact:")
                 for _, item in local.head(6).iterrows():
-                    direction = "increases" if item["shap_value"] > 0 else "decreases"
+                    direction = "increases" if item["contribution"] > 0 else "decreases"
                     explanation = FEATURE_EXPLANATIONS.get(item["feature"], "")
                     st.markdown(f"- **{display_name(item['feature'])}** {direction} this patient's estimated risk. {explanation}")
 
@@ -471,16 +471,16 @@ def render_transparency(data: pd.DataFrame) -> None:
         st.caption("Evaluated on a deterministic 80/20 stratified split of the raw-data Gradient Boosting model, matching the notebook's selected deployment approach.")
 
     with st.container(border=True):
-        st.subheader("Top features driving predictions (SHAP)")
-        background = get_shap_background_cached(data)
-        global_importance = get_global_shap(evaluation_model, background)
-        view = st.radio("View", ["Plain-language", "Technical (SHAP values)"], horizontal=True, key="global_shap_view")
-        ordered = global_importance.sort_values("mean_abs_shap")
+        st.subheader("Top features driving predictions")
+        background = get_background_sample_cached(data)
+        global_importance = get_global_importance(evaluation_model, background)
+        view = st.radio("View", ["Plain-language", "Technical (feature importance)"], horizontal=True, key="global_importance_view")
+        ordered = global_importance.sort_values("importance")
         importance_figure = px.bar(
-            ordered, x="mean_abs_shap", y=[display_name(feature) for feature in ordered["feature"]], orientation="h",
-            title="Mean absolute SHAP value by feature", color_discrete_sequence=[TEAL],
+            ordered, x="importance", y=[display_name(feature) for feature in ordered["feature"]], orientation="h",
+            title="Model feature importance", color_discrete_sequence=[TEAL],
         )
-        importance_figure.update_layout(yaxis_title=None, xaxis_title="Mean |SHAP value|")
+        importance_figure.update_layout(yaxis_title=None, xaxis_title="Relative importance")
         st.plotly_chart(importance_figure, use_container_width=True)
         if view == "Plain-language":
             st.markdown("**Why these features matter clinically:**")
