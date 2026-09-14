@@ -6,3 +6,4 @@ __pycache__/
 Diabetes model/streamlit.log
 Diabetes model/streamlit.err.log
 
+model.pkl
