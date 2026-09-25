@@ -182,7 +182,7 @@ def load_data(path: str) -> pd.DataFrame:
 
 
 @st.cache_resource
-def get_model(model_path: str, data: pd.DataFrame):
+def get_model(model_path: str, data: pd.DataFrame, cache_version: int = 2):
     return load_or_train_model(model_path, data)
 
 
