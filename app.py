@@ -518,9 +518,8 @@ def main() -> None:
         unsafe_allow_html=True,
     )
     data = load_data(str(DATA_PATH))
-    model, model_status = get_model(str(MODEL_PATH), data)
+    model = get_model(str(MODEL_PATH), data)
     st.sidebar.title("Diabetes Screening")
-    st.sidebar.caption(model_status)
     page = st.sidebar.radio("Navigate", ["Diabetes Overview", "Patient Risk Screener", "WHO Standards Dashboard", "Model & Data Transparency"])
     if page == "Diabetes Overview":
         render_overview()

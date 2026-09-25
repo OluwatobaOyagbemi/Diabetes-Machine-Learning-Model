@@ -219,15 +219,15 @@ def make_pipeline() -> Pipeline:
     )
 
 
-def load_or_train_model(model_path: str, data: pd.DataFrame) -> tuple[Pipeline, str]:
+def load_or_train_model(model_path: str, data: pd.DataFrame) -> Pipeline:
     path = Path(model_path)
     if path.exists():
         with path.open("rb") as model_file:
-            return pickle.load(model_file), f"Loaded trained artifact: {path.name}"
+            return pickle.load(model_file)
 
     model = make_pipeline()
     model.fit(data[FEATURE_COLUMNS], data[TARGET_COLUMN])
-    return model, "Gradient Boosting clinical model trained from raw CSV data for this session (no model.pkl found)."
+    return model
 
 
 def make_test_predictions(data: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, np.ndarray, Pipeline]:
